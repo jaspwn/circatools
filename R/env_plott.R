@@ -1,10 +1,11 @@
 #' @import ggplot2
 #' @import behavr
 #' @import ggetho
+#' @import data.table
 #' @importFrom lubridate hour
 #' @export
 
-env_plottR <- function(start_datetime, stop_datetime, daysLD, ...) {
+envPlottR <- function(start_datetime = NULL, stop_datetime = NULL, daysLD = NULL, phaseLD = NULL, plotError = FALSE, durationL = 12, ...) {
 
   if (!dir.exists("./figures/environmental/")) {
     dir.create("./figures/environmental/", recursive = TRUE)
@@ -16,55 +17,106 @@ env_plottR <- function(start_datetime, stop_datetime, daysLD, ...) {
 
   ## read in raw data file
 
-  data <- read.table(filename, stringsAsFactors = FALSE)
-
-  ## date, start and stop time
-
-  datestart <- as.POSIXct(strptime(start_datetime, format = "%Y-%m-%d %H:%M:%S"))
-  dateLD <- datestart + behavr::days(daysLD)
-  datestop <- as.POSIXct(strptime(stop_datetime, format = "%Y-%m-%d %H:%M:%S"))
+  data <- fread(filename, stringsAsFactors = FALSE)
 
   ## convert time in data file to POSIX datetime
 
-  time <- paste(data$V2,data$V3,data$V4,data$V5)
-  time <- as.POSIXct(strptime(time, format='%d %b %y %H:%M:%S'))
+  data[, time :=  as.POSIXct(paste(V2,V3), format="%d %b %y %H:%M:%S")]
 
   ## grab data columns and rename
 
-  light <- rowMeans(data[, 14:17])
-  temp <- rowMeans(data[, 19:22])/10
-  humidity <- rowMeans(data[, 24:27])
+  data[, light := rowMeans(data[, 12:15])]
+  data[, temp := rowMeans(data[, 17:20])/10]
+  data[, humidity := rowMeans(data[, 22:25])]
 
-  ## add all data to data.table
+  if(plotError == TRUE) {
 
-  graphdata <- data.frame(time, light, temp, humidity, stringsAsFactors = FALSE)
+    data[, error := as.numeric(V4)]
 
-  ## subset date between start and stop times
+   data <- data[, c("time", "light", "temp", "humidity", "error"), with = FALSE]
 
-  lims <- c(datestart, datestop)
-  graphdata <- subset(graphdata, time >= lims[1] & time <= lims[2])
+  } else {
+
+    data <- data[, c("time", "light", "temp", "humidity"), with = FALSE]
+
+  }
+
+  ## date, start and stop time and LD phase and LD days
+
+  if(is.null(start_datetime)) {
+
+    datestart <- min(data[, time])
+
+  } else {
+
+    datestart <- as.POSIXct(start_datetime, format = "%Y-%m-%d %H:%M:%S")
+
+  }
+
+  if(is.null(stop_datetime)) {
+
+    datestop <- max(data[, time])
+
+  } else {
+
+    datestop <- as.POSIXct(stop_datetime, format = "%Y-%m-%d %H:%M:%S")
+
+  }
+
+  if(is.null(phaseLD)) {
+
+    phaseLD <- hours(lubridate::hour(datestart))
+
+  } else {
+
+    phaseLD <- hours(phaseLD)
+
+  }
+
+  if(!is.null(daysLD)) {
+
+    dateLD <- datestart + days(daysLD)
+
+  }
 
   ## melt data
 
-  molten.data <- data.table::melt(graphdata, id = c('time'), variable.name = 'env.cond', value.name = 'value')
+  moltendata <- melt(data, id = c('time'), variable.name = 'env.cond', value.name = 'value')
 
-  env.plot <- ggplot(data = molten.data, aes(x = time, y = value, colour = env.cond)) +
-    stat_ld_annotations(phase = hours(lubridate::hour(datestart)), x_limits = c(datestart, dateLD),
-                        ld_colours = c("yellow", "dark grey"),
-                        alpha = 0.2, height = 1, outline = NA, ypos = "top") +
-    stat_ld_annotations(phase = hours(lubridate::hour(datestart)), x_limits = c(dateLD, datestop),
-                        ld_colours = c("light grey", "dark grey"),
-                        alpha = 0.2, height = 1, outline = NA, ypos = "top") +
-    geom_line() +
-    scale_x_datetime(breaks = scales::date_breaks('1 day'), expand = c(0,0), limits = c(datestart, datestop)) +
-    facet_wrap( ~ env.cond, nrow = 3, scales = "free_y", labeller = label_wrap_gen(multi_line=FALSE)) +
-    theme(axis.text.x = element_text(angle = 45, hjust = 1),
-          axis.title = element_blank(),
-          legend.position = "none")
+  if(exists("dateLD")) {
 
+    env.plot <- ggplot(data = moltendata[time %between% c(datestart, datestop)], aes(x = time, y = value, colour = env.cond)) +
+      stat_ld_annotations(phase = phaseLD, l_duration = hours(durationL), x_limits = c(datestart, dateLD),
+                          ld_colours = c("yellow", "dark grey"),
+                          alpha = 0.2, height = 1, outline = NA, ypos = "top") +
+      stat_ld_annotations(phase = phaseLD, l_duration = hours(durationL), x_limits = c(dateLD, datestop),
+                          ld_colours = c("light grey", "dark grey"),
+                          alpha = 0.2, height = 1, outline = NA, ypos = "top") +
+      geom_line(size = 1) +
+      scale_x_datetime(expand = c(0,0)) +
+      facet_wrap( ~ env.cond, nrow = 3, scales = "free_y", labeller = label_wrap_gen(multi_line=FALSE)) +
+      theme(axis.text.x = element_text(angle = 45, hjust = 1),
+            axis.title = element_blank(),
+            legend.position = "none")
 
+  } else {
 
-  ggsave(filename = paste0("./figures/environmental/", monitorID, "_", datestart, "-", datestop, ".pdf"),
+    env.plot <- ggplot(data = moltendata[time %between% c(datestart, datestop)], aes(x = time, y = value, colour = env.cond)) +
+      stat_ld_annotations(phase = phaseLD, l_duration = hours(durationL), x_limits = c(datestart, datestop),
+                          ld_colours = c("yellow", "dark grey"),
+                          alpha = 0.2, height = 1, outline = NA, ypos = "top") +
+      geom_line(size = 1) +
+      scale_x_datetime(expand = c(0,0)) +
+      facet_wrap( ~ env.cond, nrow = 3, scales = "free_y", labeller = label_wrap_gen(multi_line=FALSE)) +
+      theme(axis.text.x = element_text(angle = 45, hjust = 1),
+            axis.title = element_blank(),
+            legend.position = "none")
+
+  }
+
+  print(env.plot)
+
+  ggsave(filename = paste0("./figures/environmental/", monitorID, "_", datestart, "_", datestop, ".pdf"),
          height = 27,
          width = 48,
          units = "cm",
@@ -73,7 +125,7 @@ env_plottR <- function(start_datetime, stop_datetime, daysLD, ...) {
 
   message("Figures output to /figures/environmental/")
 
-}
+ }
 
 
 

@@ -6,7 +6,11 @@
 #' @import cowplot
 #' @export
 
-peak_plottR <- function(dt_curated, treatment, FRphase = "FR1", filterHours = 16) {
+peak_plottR <- function(dt_curated, treatment, FRphase = "FR1", filterHours = 16, phaseOffset = 0, printPlot = FALSE) {
+
+  if (!dir.exists(paste0("./figures/peak/individual/", FRphase, "/"))) {
+    dir.create(paste0("./figures/peak/individual/", FRphase, "/"), recursive = TRUE)
+  }
 
   #low pass filter design to remove high frequency activity components
   bpfilt <- butter(n = 2, W = c((1/hours(filterHours))/((1/60)/2)), type = "low", plane = "z")
@@ -34,7 +38,7 @@ peak_plottR <- function(dt_curated, treatment, FRphase = "FR1", filterHours = 16
   plot <- ggetho(data = dt_curated[phase == FRphase][xmv(treatment) == treatment],
                  aes(x = t, y = bpfiltered),
                  summary_time_window = mins(15)) +
-    stat_ld_annotations(phase = hours(18),
+    stat_ld_annotations(phase = hours(phaseOffset),
                         ld_colours = c("light yellow", "dark grey"),
                         alpha = 0.3, height = 1, outline = NA, ypos = "top") +
     geom_line(data = dt_curated[phase == FRphase][xmv(treatment) == treatment],
@@ -46,9 +50,14 @@ peak_plottR <- function(dt_curated, treatment, FRphase = "FR1", filterHours = 16
                aes(x = dt_curated[phase == FRphase][1, t] + peak*60, y = height)) +
     facet_wrap(. ~ uid, ncol = 8, scales = "free_y") +
     theme_minimal_hgrid(12) +
-    ggtitle(paste(treatment, FRphase, sep = " "))
+    ggtitle(paste(treatment, FRphase, filterHours, "hours lowpass", sep = " "))
 
-  print(plot)
+  if (printPlot == TRUE) {
+    print(plot)
+  }
+
+  ggsave(paste0("./figures/peak/individual/", FRphase, "/", treatment, "_", FRphase, "_", filterHours, "-hour_lowpass_peaks.png"),
+         plot = plot, width = 36, height = 20, units = "cm")
 
   return(dt_peaks)
 
