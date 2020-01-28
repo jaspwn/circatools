@@ -2,7 +2,7 @@ library(data.table)
 library(ggplot2)
 library(shiny)
 
-options(shiny.trace = TRUE)
+options(shiny.trace = FALSE)
 
 # Define UI for application that draws a histogram
 ui <- fluidPage(
