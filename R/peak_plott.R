@@ -43,7 +43,7 @@ peak_plottR <- function(dt_curated, treatment, FRphase = "FR1", filterHours = 16
                         alpha = 0.3, height = 1, outline = NA, ypos = "top") +
     geom_line(data = dt_curated[phase == FRphase][xmv(treatment) == treatment],
               aes(y = activity),
-              stat = "summary_bin", binwidth = 900, fun.y = "mean",
+              stat = "summary_bin", binwidth = mins(120), fun.data = "mean_se",
               colour = "red", size = 0.2) +
     geom_line(size = 0.75) +
     geom_point(data = dt_peaks[phase == FRphase][xmv(treatment) == treatment],
@@ -51,6 +51,7 @@ peak_plottR <- function(dt_curated, treatment, FRphase = "FR1", filterHours = 16
     facet_wrap(. ~ uid, ncol = 8, scales = "free_y") +
     theme_minimal_hgrid(12) +
     ggtitle(paste(treatment, FRphase, filterHours, "hours lowpass", sep = " "))
+
 
   if (printPlot == TRUE) {
     print(plot)

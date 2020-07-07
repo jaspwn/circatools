@@ -4,7 +4,7 @@
 #' @importFrom  pracma findpeaks
 #' @export
 
-peak_returnR <- function(dt_curated, filterHours = 16) {
+peak_returnR <- function(dt_curated, filterHours = 16, minpeakdist = 20) {
 
   #low pass filter design to remove high frequency activity components
   bpfilt <- butter(n = 2, W = c((1/hours(filterHours))/((1/60)/2)), type = "low", plane = "z")
@@ -16,7 +16,7 @@ peak_returnR <- function(dt_curated, filterHours = 16) {
 
   #find daily peak in activity for each fly and remap it to same metadata
   dt_peaks <- dt_curated[, data.table(findpeaks(bpfiltered,
-                                                minpeakdistance = filterHours*60,
+                                                minpeakdistance = minpeakdist*60,
                                                 peakpat = "{1,}[0]*[-]{1,}",
                                                 npeaks = floor(length(t)/1440))),
                          by = c("id", "phase")]

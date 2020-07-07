@@ -3,7 +3,7 @@
 #' @import data.table
 #' @export
 
-pop_phase_graph <- function(dt_curated, exp_phase, param, bin_width, na.rm = TRUE, ...) {
+pop_phase_graph <- function(dt_curated, exp_phase, param = ("activity"), bin_width = 30, facet_var = "treatment", na.rm = TRUE, ...) {
 
   ## create output directory
 
@@ -39,7 +39,7 @@ pop_phase_graph <- function(dt_curated, exp_phase, param, bin_width, na.rm = TRU
     stat_pop_etho() +
     scale_fill_brewer(type = "seq", palette = "Dark2") +
     scale_colour_brewer(type = "seq", palette = "Dark2") +
-    facet_wrap(temp ~ genotype, nrow = 2) +
+    facet_wrap(temp ~ treatment, nrow = 2) +
     ggtitle(paste0(exp_phase, " ", param, " (", bin_width, "-min bin)"))
 
   plot_wrap <-   ggetho(dt,
@@ -51,7 +51,6 @@ pop_phase_graph <- function(dt_curated, exp_phase, param, bin_width, na.rm = TRU
     stat_pop_etho() +
     scale_fill_brewer(type = "seq", palette = "Dark2") +
     scale_colour_brewer(type = "seq", palette = "Dark2") +
-    facet_wrap(temp ~ genotype, nrow = 1) +
     theme(legend.position = "none")
 
   plot <- gridExtra::arrangeGrob(plot_act, plot_wrap, ncol = 1, nrow = 2)
