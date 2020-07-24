@@ -12,6 +12,18 @@ ui <- fluidPage(
     titlePanel("environmental data"),
 
     fluidRow(
+        column(width = 12, class = "well",
+               column(width = 4,
+                      h4("choose directory"),
+                      actionButton("selectDir", "directory")),
+               column(width = 4,
+                      selectInput("selectMon", "choose env monitor file",
+                                  choices = c())),
+               column(width = 4,
+                      h4("test out"),
+                      verbatimTextOutput("info")))),
+
+    fluidRow(
         column(width = 12,
                plotOutput("lightPlot", height = 250,
                           dblclick = "lightPlot_dblclick",
@@ -42,20 +54,9 @@ ui <- fluidPage(
                           brush = brushOpts(
                               id = "errPlot_brush",
                               resetOnNew = TRUE),
-                          click = "errPlot_click"))),
-    fluidRow(
-        column(width = 12, class = "well",
-               column(width = 4,
-                      h4("choose directory"),
-                      actionButton("selectDir", "directory")),
-               column(width = 4,
-                      selectInput("selectMon", "choose env monitor file",
-                                  choices = c())),
-               column(width = 4,
-                      h4("test out"),
-                      verbatimTextOutput("info"))),
-               )
-    )
+                          click = "errPlot_click")))
+
+)
 
 
 

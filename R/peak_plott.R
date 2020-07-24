@@ -12,8 +12,11 @@ peak_plottR <- function(dt_curated, treatment, FRphase = "FR1", filterHours = 16
     dir.create(paste0("./figures/peak/individual/", FRphase, "/"), recursive = TRUE)
   }
 
+  #calculate DAM sample rate to pass to bp filter design
+  sampRate <- diff(dt_curated[1:2, t])
+
   #low pass filter design to remove high frequency activity components
-  bpfilt <- butter(n = 2, W = c((1/hours(filterHours))/((1/60)/2)), type = "low", plane = "z")
+  bpfilt <- butter(n = 2, W = c((1/hours(filterHours))/((1/sampRate)/2)), type = "low", plane = "z")
 
   #filter activity across entire experiment by individual
   dt_curated[, bpfiltered := as.vector(filtfilt(bpfilt, x = activity)),

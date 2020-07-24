@@ -14,15 +14,6 @@ ui <- fluidPage(
     titlePanel("activity data"),
 
     fluidRow(
-        column(width = 12,
-               plotOutput("actPlot", height = 700,
-                          dblclick = "actPlot_dblclick",
-                          brush = brushOpts(
-                              id = "actPlot_brush",
-                              resetOnNew = TRUE),
-                          click = "actPlot_click"))),
-
-    fluidRow(
         column(width = 12, class = "well",
                column(width = 4,
                       sliderInput("bin", label = "bin width (s)",
@@ -62,7 +53,18 @@ ui <- fluidPage(
                       )
                )
         )
-    )
+    ),
+
+    fluidRow(
+        column(width = 12,
+               plotOutput("actPlot", height = 700,
+                          dblclick = "actPlot_dblclick",
+                          brush = brushOpts(
+                              id = "actPlot_brush",
+                              resetOnNew = TRUE),
+                          click = "actPlot_click")))
+
+
 )
 
 

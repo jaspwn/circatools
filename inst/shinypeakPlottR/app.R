@@ -34,6 +34,8 @@ ui <- fluidPage(
 
 server <- function(input, output) {
 
+  metadata <- dt_curated[, meta = TRUE]
+
   output$rhythmPlot <- renderPlot({
     shiny_peak_plottR(dt_curated, dt_peaks, gtype = input$genotype, ement = input$entrainment, FRphase = input$phase)
   })
