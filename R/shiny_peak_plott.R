@@ -19,7 +19,7 @@ shiny_peak_plottR <- function(dt_curated, dt_peaks, gtype, ement, FRphase, filte
     stat_ld_annotations(phase = hours(phaseOffset),
                         ld_colours = c("light yellow", "dark grey"),
                         alpha = 0.3, height = 1, outline = NA, ypos = "top") +
-    geom_rect(data = metadata[genotype == gtype][entrainment == ement], aes_string(fill = paste0(FRphase, "_rhythmic")), xmin = -Inf,xmax = Inf,
+    geom_rect(data = dt_curated[, meta = TRUE][genotype == gtype][entrainment == ement], aes_string(fill = paste0(FRphase, "_rhythmic")), xmin = -Inf,xmax = Inf,
               ymin = -Inf, ymax = Inf, inherit.aes = FALSE) +
     scale_fill_manual(breaks = c(TRUE, FALSE), values = alpha(c("#2ca25f","#de2d26"), 0.2)) +
     geom_line(data = dt_curated[phase == FRphase][xmv(genotype) == gtype][xmv(entrainment) == ement],
