@@ -37,7 +37,7 @@ server <- function(input, output) {
   metadata <- dt_curated[, meta = TRUE]
 
   output$rhythmPlot <- renderPlot({
-    shiny_peak_plottR(dt_curated, dt_peaks, gtype = input$genotype, ement = input$entrainment, FRphase = input$phase)
+    shiny_auto_plottR(dt_curated, dt_auto, gtype = input$genotype, ement = input$entrainment, FRphase = input$phase)
   })
 
   rvs <- reactiveValues(arr_flys = metadata[get(paste0(isolate(input$phase), "_rhythmic")) == FALSE, uid])
@@ -67,19 +67,20 @@ server <- function(input, output) {
 
     metadata[, paste0(input$phase, "_rhythmic") := ifelse(uid %in% rvs$arr_flys, FALSE, TRUE)]
 
-    rvs$arr_flys <- metadata[get(paste0(isolate(input$phase), "_rhythmic")) == FALSE, uid]
+    # rvs$arr_flys <- metadata[get(paste0(isolate(input$phase), "_rhythmic")) == FALSE, uid]
+    rvs$arr_flys <- c()
 
     ## re-link metadata to activity data
     dt_curated <- setmeta(dt_curated, metadata)
-    dt_peaks <- setmeta(dt_peaks, metadata)
+    dt_auto <- setmeta(dt_auto, metadata)
 
-    # if (exists(dt_auto)) {
-    #   dt_auto <- setmeta(dt_auto, metadata)
+    # if (exists(dt_peaks)) {
+    #   dt_peaks <- setmeta(dt_peaks, metadata)
     # }
 
     ## replot
     output$rhythmPlot <- renderPlot({
-      shiny_peak_plottR(dt_curated, dt_peaks, gtype = input$genotype, ement = input$entrainment, FRphase = input$phase)
+      shiny_auto_plottR(dt_curated, dt_auto, gtype = input$genotype, ement = input$entrainment, FRphase = input$phase)
     })
   })
 
@@ -91,15 +92,15 @@ server <- function(input, output) {
 
     ## re-link metadata to activity data
     dt_curated <- setmeta(dt_curated, metadata)
-    dt_peaks <- setmeta(dt_peaks, metadata)
+    dt_auto <- setmeta(dt_auto, metadata)
 
-    # if (exists(dt_auto)) {
-    #   dt_auto <- setmeta(dt_auto, metadata)
+    # if (exists(dt_peaks)) {
+    #   dt_peaks <- setmeta(dt_peaks, metadata)
     # }
 
     ## replot
     output$rhythmPlot <- renderPlot({
-      shiny_peak_plottR(dt_curated, dt_peaks, gtype = input$genotype, ement = input$entrainment, FRphase = input$phase)
+      shiny_auto_plottR(dt_curated, dt_auto, gtype = input$genotype, ement = input$entrainment, FRphase = input$phase)
     })
   })
 

@@ -14,13 +14,14 @@ peak_returnR <- function(dt_curated, filterHours = 16, minpeakdist = 20) {
 
   #filter activity across entire experiment by individual
   dt_curated[, bpfiltered := as.vector(filtfilt(bpfilt, x = activity)),
-             by = "id"]
+             by = c("id", "phase")]
 
 
   #find daily peak in activity for each fly and remap it to same metadata
   dt_peaks <- dt_curated[, data.table(findpeaks(bpfiltered,
+                                                zero = "0",
                                                 minpeakdistance = minpeakdist*60,
-                                                peakpat = "{1,}[0]*[-]{1,}",
+                                                peakpat = "[+]{10,}[0]*[-]{10,}",
                                                 npeaks = floor(length(t)/1440))),
                          by = c("id", "phase")]
 
@@ -31,7 +32,12 @@ peak_returnR <- function(dt_curated, filterHours = 16, minpeakdist = 20) {
   setmeta(dt_peaks, metadata)
   dt_peaks[, .(id, uid) , meta = TRUE]
   dt_peaks[, uid := xmv(uid)]
-  dt_curated[, uid := xmv(uid)]
+
+  ## add rank column and phase times
+  dt_peaks <- dt_peaks[, peak_no := rank(peak),
+                       by = c("id", "phase")]
+  dt_peaks[, peak_phase := peak%%1440]
+  dt_peaks[, peak_time := peak_phase/1440*24]
 
   return(dt_peaks)
 }

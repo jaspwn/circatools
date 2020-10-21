@@ -13,13 +13,19 @@ ui <- fluidPage(
 
     fluidRow(
         column(width = 12, class = "well",
-               column(width = 4,
+               column(width = 2,
                       h4("choose directory"),
                       actionButton("selectDir", "directory")),
-               column(width = 4,
+               column(width = 2,
+                      h4("set experimental range"),
+                      actionButton("setRange", "set time")),
+               column(width = 2,
+                      h4("save plot"),
+                      actionButton("savePlot", "save")),
+               column(width = 3,
                       selectInput("selectMon", "choose env monitor file",
                                   choices = c())),
-               column(width = 4,
+               column(width = 3,
                       h4("test out"),
                       verbatimTextOutput("info")))),
 
@@ -49,7 +55,7 @@ ui <- fluidPage(
                           click = "humdPlot_click"))),
     fluidRow(
         column(width = 12,
-               plotOutput("errPlot", height = 150,
+               plotOutput("errPlot", height = 75,
                           dblclick = "errPlot_dblclick",
                           brush = brushOpts(
                               id = "errPlot_brush",
@@ -76,13 +82,28 @@ server <- function(input, output, session) {
 
     })
 
+    observeEvent(input$setRange, {
+
+        rvs$x <- c(unique(metadata[basename(env_monitor) == input$selectMon, start_datetime]),
+                   unique(metadata[basename(env_monitor) == input$selectMon, stop_datetime]))
+
+    })
+
     observe({
+
+        ## to try and implement later in order to automatically locate env mon files within
+        ## a project - shiny apps set wd to their install dir!
+        # if (exists("metadata")) {
+        #
+        #     rvs$directory <- paste0("./data/", unique(dirname(metadata[, env_monitor])))
+        #
+        # }
 
         if (is.null(rvs$directory)) {
             rvs$directory <- character(0)
         }
 
-        files <- list.files(rvs$directory)
+        files <- list.files(rvs$directory, pattern = "*.txt")
 
         updateSelectInput(session, "selectMon", choices = files)
 
@@ -90,13 +111,17 @@ server <- function(input, output, session) {
 
     output$info <- renderPrint({
 
-        # flybydt <<- nearPoints(res_dt[variable == "bpfiltered_slidingFitfreq"][n_fits >= input$range[1]][n_fits <= input$range[2]],
-        #                        input$plot_click, xvar = "evtime", yvar = "median")
-        rvs$directory
-        rvs$x
-        rvs$ylight
-        rvs$ytemp
-        rvs$yhumd
+        if (exists("metadata")) {
+
+            #print(unique(dirname(metadata[, env_monitor])))
+            print(input$selectMon)
+            print(rvs$directory)
+            print(unique(metadata[basename(env_monitor) == input$selectMon, start_datetime]))
+            print(unique(metadata[basename(env_monitor) == input$selectMon, stop_datetime]))
+
+        }
+
+
     })
 
 
@@ -107,11 +132,11 @@ server <- function(input, output, session) {
             rvs$x <- as.POSIXct(rvs$x, origin = "1970-01-01")
         }
 
-        #monitorID <- basename(tools::file_path_sans_ext(filename))
-
         ## read in raw data file
 
-        data <- fread(paste0(rvs$directory, "/", input$selectMon), stringsAsFactors = FALSE)
+        filename <- paste0(rvs$directory, "/", input$selectMon)
+
+        data <- fread(filename, stringsAsFactors = FALSE)
 
         ## convert time in data file to POSIX datetime
 
@@ -125,22 +150,34 @@ server <- function(input, output, session) {
         data[, error := as.numeric(V4)]
         data <- data[, c("time", "light", "temp", "humidity", "error"), with = FALSE]
 
-        ## melt data
+        monitorID <- basename(tools::file_path_sans_ext(filename))
 
-        #moltendata <- melt(data, id = c('time'), variable.name = 'env.cond', value.name = 'value')
+        if (exists("metadata")) {
 
-        ggplot(data = data, aes(x = time, y = light, colour = "light")) +
+            expID <- unique(metadata[basename(env_monitor) == input$selectMon, exp_ID])
+            title <- paste(monitorID, expID, rvs$x[1], "-", rvs$x[2], sep = " ")
+
+        } else {
+
+            title <- paste(monitorID, rvs$x[1], "-", rvs$x[2], sep = " ")
+
+        }
+
+        lPlot <<- ggplot(data = data, aes(x = time, y = light, colour = "light")) +
             geom_line(size = 1) +
             coord_cartesian(xlim = rvs$x, ylim = rvs$ylight) +
             scale_colour_manual(values = c("light" = "#ff7f00")) +
             scale_x_datetime(expand = c(0,0)) +
             ylab("light") +
             scale_y_continuous(labels = function(x) formatC(x, width = 5)) +
+            ggtitle(title) +
             theme_minimal_grid(font_size = 12) +
             theme(axis.text.x = element_blank(),
                   axis.title.x = element_blank(),
                   axis.text.y = element_text(hjust = 0, debug = FALSE),
                   legend.position = "none")
+
+        return(lPlot)
 
     })
 
@@ -151,11 +188,11 @@ server <- function(input, output, session) {
             rvs$x <- as.POSIXct(rvs$x, origin = "1970-01-01")
         }
 
-        #monitorID <- basename(tools::file_path_sans_ext(filename))
-
         ## read in raw data file
 
-        data <- fread(paste0(rvs$directory, "/", input$selectMon), stringsAsFactors = FALSE)
+        filename <- paste0(rvs$directory, "/", input$selectMon)
+
+        data <- fread(filename, stringsAsFactors = FALSE)
 
         ## convert time in data file to POSIX datetime
 
@@ -169,11 +206,7 @@ server <- function(input, output, session) {
         data[, error := as.numeric(V4)]
         data <- data[, c("time", "light", "temp", "humidity", "error"), with = FALSE]
 
-        ## melt data
-
-        #moltendata <- melt(data, id = c('time'), variable.name = 'env.cond', value.name = 'value')
-
-        ggplot(data = data, aes(x = time, y = temp, colour = "temp")) +
+        tPlot <<- ggplot(data = data, aes(x = time, y = temp, colour = "temp")) +
             geom_line(size = 1) +
             coord_cartesian(xlim = rvs$x, ylim = rvs$ytemp) +
             scale_colour_manual(values = c("temp" = "#e41a1c")) +
@@ -186,6 +219,8 @@ server <- function(input, output, session) {
                   axis.text.y = element_text(hjust = 0, debug = FALSE),
                   legend.position = "none")
 
+        return(tPlot)
+
     })
 
     #humdity plot output
@@ -195,11 +230,11 @@ server <- function(input, output, session) {
             rvs$x <- as.POSIXct(rvs$x, origin = "1970-01-01")
         }
 
-        #monitorID <- basename(tools::file_path_sans_ext(filename))
-
         ## read in raw data file
 
-        data <- fread(paste0(rvs$directory, "/", input$selectMon), stringsAsFactors = FALSE)
+        filename <- paste0(rvs$directory, "/", input$selectMon)
+
+        data <- fread(filename, stringsAsFactors = FALSE)
 
         ## convert time in data file to POSIX datetime
 
@@ -213,11 +248,7 @@ server <- function(input, output, session) {
         data[, error := as.numeric(V4)]
         data <- data[, c("time", "light", "temp", "humidity", "error"), with = FALSE]
 
-        ## melt data
-
-        #moltendata <- melt(data, id = c('time'), variable.name = 'env.cond', value.name = 'value')
-
-        ggplot(data = data, aes(x = time, y = humidity, colour = "humidity")) +
+        hPlot <<- ggplot(data = data, aes(x = time, y = humidity, colour = "humidity")) +
             geom_line(size = 1) +
             coord_cartesian(xlim = rvs$x, ylim = rvs$yhumd) +
             scale_colour_manual(values = c("humidity" = "#377eb8")) +
@@ -230,6 +261,8 @@ server <- function(input, output, session) {
                   axis.text.y = element_text(hjust = 0, debug = FALSE),
                   legend.position = "none")
 
+        return(hPlot)
+
 
     })
 
@@ -240,11 +273,11 @@ server <- function(input, output, session) {
             rvs$x <- as.POSIXct(rvs$x, origin = "1970-01-01")
         }
 
-        #monitorID <- basename(tools::file_path_sans_ext(filename))
-
         ## read in raw data file
 
-        data <- fread(paste0(rvs$directory, "/", input$selectMon), stringsAsFactors = FALSE)
+        filename <- paste0(rvs$directory, "/", input$selectMon)
+
+        data <- fread(filename, stringsAsFactors = FALSE)
 
         ## convert time in data file to POSIX datetime
 
@@ -262,7 +295,7 @@ server <- function(input, output, session) {
 
         #moltendata <- melt(data, id = c('time'), variable.name = 'env.cond', value.name = 'value')
 
-        ggplot(data = data, aes(x = time, y = error, colour = "error")) +
+        ePlot <<- ggplot(data = data, aes(x = time, y = error, colour = "error")) +
             geom_line(size = 1) +
             coord_cartesian(xlim = rvs$x, ylim = rvs$yerr) +
             scale_colour_manual(values = c("error" = "#984ea3")) +
@@ -274,6 +307,37 @@ server <- function(input, output, session) {
                   axis.title.x = element_blank(),
                   axis.text.y = element_text(hjust = 0, debug = FALSE),
                   legend.position = "none")
+
+        return(ePlot)
+
+    })
+
+    observeEvent(input$savePlot, {
+
+        outPlot <- plot_grid(lPlot, tPlot, hPlot, ePlot, ncol = 1)
+
+        filename <- paste0(rvs$directory, "/", input$selectMon)
+        monitorID <- basename(tools::file_path_sans_ext(filename))
+
+        sTime <- strftime(rvs$x[1], format = "%Y%m%d_%H%M")
+        eTime <- strftime(rvs$x[2], format = "%Y%m%d_%H%M")
+
+        if (exists("metadata")) {
+
+            expID <- unique(metadata[basename(env_monitor) == input$selectMon, exp_ID])
+
+            outFile <- paste(monitorID, expID, sTime, eTime, sep = "-")
+
+        } else {
+
+            outFile <- paste(monitorID, sTime, eTime, sep = "-")
+
+        }
+
+
+
+        outFile <- paste0(rvs$directory, "/", outFile, ".png")
+        ggsave2(filename = outFile, plot = outPlot, width = 16, height = 9)
 
     })
 
