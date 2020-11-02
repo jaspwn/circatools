@@ -16,28 +16,41 @@ ui <- fluidPage(
     fluidRow(
         column(width = 12, class = "well",
                column(width = 4,
+                      fluidRow(
                       sliderInput("bin", label = "bin width (s)",
-                                  min = 10, max = 1800, value = 600, step = 10)),
+                                  min = 60, max = 3600, value = 1800, step = 60)),
+                      fluidRow(
+                          column(width = 4,
+                                 actionButton("saveDir", "directory")),
+                          column(width = 4,
+                                 actionButton("savePlot", "save"))
+                      )),
                column(width = 8,
                       fluidRow(
                           column(width = 4,
-                                 selectInput("entrainment", label = "choose entrainment",
-                                             choices = c("all", unique(dt_curated[, xmv(entrainment)])))),
+                                 selectizeInput("entrainment", label = "choose entrainment",
+                                             choices = unique(dt_curated[, xmv(entrainment)]),
+                                             selected = unique(dt_curated[, xmv(entrainment)]),
+                                             multiple = TRUE)),
                           column(width = 4,
                                  selectInput("genotype", label = "choose genotype",
-                                             choices = c("all", unique(dt_curated[, xmv(genotype)])))),
+                                             choices = unique(dt_curated[, xmv(genotype)]),
+                                             selected = unique(dt_curated[, xmv(genotype)]),
+                                             multiple = TRUE)),
                           column(width = 4,
                                  selectInput("phase", label = "choose phase",
-                                             choices = c("all", unique(dt_curated[, phase]))))
+                                             choices = unique(dt_curated[, phase]),
+                                             selected = unique(dt_curated[, phase]),
+                                             multiple = TRUE))
                       ),
                       fluidRow(
-                          column(width = 3,
+                          column(width = 2,
                                  selectInput("facetx", label = "facet formula",
-                                             choices = c(unique(colnames(dt_curated[meta = TRUE]))),
+                                             choices = c("none", unique(colnames(dt_curated[meta = TRUE]))),
                                              selected = "entrainment")),
                           column(width = 2,
                                  h1("~", align = "center")),
-                          column(width = 3,
+                          column(width = 2,
                                  selectInput("facety", label = "",
                                              choices = c(unique(colnames(dt_curated[meta = TRUE]))),
                                              selected = "genotype")),
@@ -48,7 +61,11 @@ ui <- fluidPage(
                           column(width = 2,
                                  selectInput("ncols", label = "cols",
                                              choices = seq(1,16,1),
-                                             selected = length(unique(dt_curated[, xmv(genotype)]))))
+                                             selected = length(unique(dt_curated[, xmv(genotype)])))),
+                          column(width = 2,
+                                 selectInput("colour", label = "colour",
+                                             choices = c(unique(colnames(dt_curated[meta = TRUE]))),
+                                             selected = "genotype"))
 
                       )
                )
@@ -75,42 +92,46 @@ server <- function(input, output, session) {
 
     #reactive values
 
-    rvs <- reactiveValues(x = NULL, y = NULL)
-
-
+    rvs <- reactiveValues(x = NULL, y = NULL, directory = NULL)
 
     # light plot output
     output$actPlot <- renderPlot({
 
-        if(input$phase %in% unique(dt_curated[, phase])) {
-            phases <- input$phase
+        if (input$facetx == "none") {
+
+            shinyPlot <<- ggetho(dt_curated[phase %in% input$phase &
+                                                xmv(entrainment) %in% input$entrainment &
+                                                xmv(genotype) %in% input$genotype],
+                                 summary_time_window = input$bin,
+                                 aes_string(x = "t", y = "activity", colour = input$colour)) +
+                stat_ld_annotations(height=1, alpha=0.1, outline = NA) +
+                stat_pop_etho() +
+                scale_color_brewer(type = "qual", palette = "Set1", direction = -1) +
+                scale_fill_brewer(type = "qual", palette = "Set1", direction = -1) +
+                coord_cartesian(xlim = rvs$x, ylim = rvs$y) +
+                facet_wrap(. ~ get(input$facety), scales = "fixed", nrow = as.integer(input$nrows), ncol = as.integer(input$ncols)) +
+                theme_minimal_hgrid(12) +
+                theme(legend.position = "bottom")
+
         } else {
-            phases <- unique(dt_curated[, phase])
+
+            shinyPlot <<- ggetho(dt_curated[phase %in% input$phase &
+                                                xmv(entrainment) %in% input$entrainment &
+                                                xmv(genotype) %in% input$genotype],
+                                 summary_time_window = input$bin,
+                                 aes_string(x = "t", y = "activity", colour = input$colour)) +
+                stat_ld_annotations(height=1, alpha=0.1, outline = NA) +
+                stat_pop_etho() +
+                scale_color_brewer(type = "qual", palette = "Set1", direction = -1) +
+                scale_fill_brewer(type = "qual", palette = "Set1", direction = -1) +
+                coord_cartesian(xlim = rvs$x, ylim = rvs$y) +
+                facet_wrap(get(input$facetx) ~ get(input$facety), scales = "fixed", nrow = as.integer(input$nrows), ncol = as.integer(input$ncols)) +
+                theme_minimal_hgrid(12) +
+                theme(legend.position = "bottom")
+
         }
 
-        if(input$genotype %in% unique(dt_curated[, xmv(genotype)])) {
-            genotypes <- input$genotype
-        } else {
-            genotypes <- unique(dt_curated[, xmv(genotype)])
-        }
-
-        if(input$entrainment %in% unique(dt_curated[, xmv(entrainment)])) {
-            entrainments <- input$entrainment
-        } else {
-            entrainments <- unique(dt_curated[, xmv(entrainment)])
-        }
-
-        ggetho(dt_curated[phase %in% phases][xmv(entrainment) %in% entrainments][xmv(genotype) %in% genotypes],
-               summary_time_window = input$bin,
-               aes(x = t, y = activity, colour = genotype)) +
-            stat_ld_annotations(height=1, alpha=0.3, outline = NA) +
-            stat_pop_etho() +
-            scale_color_brewer(type = "qual", palette = "Set1", direction = -1) +
-            scale_fill_brewer(type = "qual", palette = "Set1", direction = -1) +
-            coord_cartesian(xlim = rvs$x, ylim = rvs$y) +
-            facet_wrap(get(input$facetx) ~ get(input$facety), scales = "fixed", nrow = as.integer(input$nrows), ncol = as.integer(input$ncols)) +
-            theme_minimal_hgrid(12) +
-            theme(legend.position = "bottom")
+        return(shinyPlot)
 
     })
 
@@ -128,6 +149,34 @@ server <- function(input, output, session) {
             rvs$x <- NULL
             rvs$y <- NULL
         }
+    })
+
+    observeEvent(input$saveDir, {
+
+        rvs$directory <- dirname(file.choose())
+
+    })
+
+    observeEvent(input$savePlot, {
+
+        if (is.null(rvs$directory)) {
+
+            return(message("Set save directory first!"))
+
+        }
+
+        if (!dir.exists(paste0(rvs$directory, "/figures/actPlottR/"))) {
+
+            dir.create(paste0(rvs$directory, "/figures/actPlottR/"), recursive = TRUE)
+
+        }
+
+        outFile <- paste0(rvs$directory, "/figures/actPlottR/", format(Sys.time(), "%Y%d%m_%H%M%S"), "_", input$facetx, "_X_", input$facety, "_activity.png")
+
+        ggsave2(filename = outFile, plot = shinyPlot, width = 16, height = 9)
+
+        message(paste0("Plot saved as ", outFile))
+
     })
 
 
